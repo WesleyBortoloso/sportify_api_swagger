@@ -1,0 +1,452 @@
+openapi: 3.0.0
+info:
+  title: API de Gestão de Locação de Quadras
+  version: 1.0.0
+  description: API para gerenciamento de quadras, reservas e autenticação.
+servers:
+  # Added by API Auto Mocking Plugin
+  - description: SwaggerHub API Auto Mocking
+    url: https://virtserver.swaggerhub.com/WesleyBortoloso/Sportify/1.0.0
+  - url: http://localhost:3000
+    description: Servidor local
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+security:
+  - BearerAuth: []
+
+paths:
+  # Autenticação
+  /auth/sign_in:
+    post:
+      tags:
+        - Auth
+      summary: Login do usuário
+      description: Autentica um usuário e retorna um token JWT.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  example: user@example.com
+                password:
+                  type: string
+                  example: password123
+              required:
+                - email
+                - password
+      responses:
+        200:
+          description: Login bem-sucedido
+          content:
+            application/json:
+              example:
+                token: jwt_token
+                user:
+                  id: 1
+                  email: user@example.com
+        401:
+          description: Credenciais inválidas
+
+  /auth/sign_out:
+    delete:
+      tags:
+        - Auth
+      summary: Logout do usuário
+      description: Faz logout do usuário revogando o token JWT.
+      responses:
+        200:
+          description: Logout bem-sucedido
+        401:
+          description: Token ausente ou inválido
+
+  # Quadras (Admin)
+  /admin/courts:
+    post:
+      tags:
+        - Admin
+      summary: Criar uma nova quadra
+      description: Cria uma nova quadra com os parâmetros fornecidos.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                category:
+                  type: string
+                price:
+                  type: integer
+                max_players:
+                  type: integer
+                status:
+                  type: string
+                description:
+                  type: string
+              required:
+                - name
+                - category
+                - price
+                - max_players
+      responses:
+        201:
+          description: Quadra criada com sucesso
+        400:
+          description: Erro de validação
+
+  /admin/courts/{id}:
+    put:
+      tags:
+        - Admin
+      summary: Atualizar uma quadra
+      description: Atualiza os detalhes de uma quadra existente.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                category:
+                  type: string
+                  enum:
+                    - soccer
+                    - padel
+                price:
+                  type: integer
+                max_players:
+                  type: integer
+                status:
+                  type: string
+                  enum:
+                    - open
+                    - closed
+                description:
+                  type: string
+      responses:
+        200:
+          description: Quadra atualizada com sucesso
+        404:
+          description: Quadra não encontrada
+
+  # Reservas
+  /bookings:
+    post:
+      tags:
+        - Booking
+      summary: Criar uma nova reserva
+      description: Cria uma nova reserva para uma quadra.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                court_id:
+                  type: integer
+                  description: O ID da quadra relacionada.
+                starts_on:
+                  type: string
+                  format: date-time
+                  description: Data e hora de início da reserva.
+                public:
+                  type: boolean
+                  description: Estado público da reserva.
+              required:
+                - court_id
+                - starts_on
+                - public
+      responses:
+        201:
+          description: Reserva criada com sucesso
+        400:
+          description: Erro de validação
+    get:
+      tags:
+        - Booking
+      summary: Listar reservas
+      description: Retorna uma lista de reservas com paginação e filtros opcionais.
+      parameters:
+        - name: filter
+          in: query
+          schema:
+            type: object
+          description: Parâmetros para filtrar as reservas.
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+          description: Número da página.
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 6
+          description: Quantidade de itens por página.
+      responses:
+        200:
+          description: Lista de reservas retornada com sucesso
+
+  /bookings/{id}:
+    get:
+      tags:
+        - Booking
+      summary: Detalhes de uma reserva
+      description: Retorna os detalhes de uma reserva específica.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID da reserva.
+      responses:
+        200:
+          description: Detalhes da reserva retornados com sucesso
+        404:
+          description: Reserva não encontrada
+    put:
+      tags:
+        - Booking
+      summary: Atualizar uma reserva
+      description: Atualiza os dados de uma reserva específica.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID da reserva.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum:
+                    - agendado
+                    - cancelado
+                    - concluido
+                  description: Status da reserva.
+                public:
+                  type: boolean
+                  description: Estado público da reserva.
+      responses:
+        200:
+          description: Reserva atualizada com sucesso
+        404:
+          description: Reserva não encontrada
+
+  /bookings/{id}/available_times:
+    get:
+      tags:
+        - Booking
+      summary: Listar horários disponíveis para uma quadra
+      description: Lista todos os horários disponíveis para reserva em uma quadra específica.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID da quadra.
+        - name: date
+          in: query
+          schema:
+            type: string
+            format: date
+            default: "today"
+          description: Data desejada para verificar horários disponíveis.
+      responses:
+        200:
+          description: Lista de horários disponíveis retornada com sucesso
+        404:
+          description: Quadra não encontrada ou sem horários disponíveis
+
+  /bookings/{id}/join:
+    post:
+      tags:
+        - Booking
+      summary: Participar de uma reserva pública
+      description: Permite que um usuário participe de uma reserva pública existente.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID da reserva.
+      responses:
+        200:
+          description: Usuário adicionado à reserva com sucesso
+        404:
+          description: Reserva não encontrada ou não pública
+
+  # Quadras (User)
+  /courts:
+    post:
+      tags:
+        - Court
+      summary: Criar uma nova quadra
+      description: Cria uma nova quadra com os parâmetros fornecidos.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  example: Quadra 1
+                category:
+                  type: string
+                  example: Futebol
+                price:
+                  type: integer
+                  example: 1000
+                max_players:
+                  type: integer
+                  example: 10
+                status:
+                  type: string
+                  example: open
+                description:
+                  type: string
+                  example: Quadra de futebol de gramado sintético.
+              required:
+                - name
+                - category
+                - price
+                - max_players
+      responses:
+        201:
+          description: Quadra criada com sucesso
+        400:
+          description: Erro de validação
+
+    get:
+      tags:
+        - Court
+      summary: Retornar uma lista de quadras
+      description: Retorna uma lista de quadras com paginação e filtros opcionais.
+      parameters:
+        - name: filter
+          in: query
+          schema:
+            type: object
+          description: Parâmetros de filtro para as quadras.
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+          description: Número da página.
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 6
+          description: Quantidade de itens por página.
+      responses:
+        200:
+          description: Lista de quadras retornada com sucesso
+
+  # Informações do Usuário
+  /informations/me:
+    get:
+      tags:
+        - Information
+      summary: Retornar informações do usuário logado
+      description: Retorna as informações do usuário atualmente logado.
+      responses:
+        200:
+          description: Informações do usuário retornadas com sucesso
+        401:
+          description: Não autorizado
+  
+  # Informações do Usuário
+  /users:
+    post:
+      tags:
+        - User
+      summary: Cadastrar um novo usuário
+      description: Retorna as informações do usuário cadastrado.
+      parameters:
+        - name: email
+          in: query
+          schema:
+            type: string
+          description: Email do usuário.
+        - name: password
+          in: query
+          schema:
+            type: string
+          description: Senha do usuário.
+        - name: document
+          in: query
+          schema:
+            type: string
+          description: Documento do usuário.
+        - name: name
+          in: query
+          schema:
+            type: string
+          description: Nome do usuário.
+        - name: password_confirmation
+          in: query
+          schema:
+            type: integer
+          description: Senha de confirmação.
+      responses:
+        200:
+          description: Criação do usuário retornadas com sucesso
+        401:
+          description: Houve falha na criação do usuário
+  
+  # Informações do Jogador
+  /players:
+    post:
+      tags:
+        - Player
+      summary: Cadastrar um novo jogador
+      description: Retorna as informações do jogador cadastrado.
+      parameters:
+        - name: nickname
+          in: query
+          schema:
+            type: string
+          description: Apelido do jogador.
+        - name: role
+          in: query
+          schema:
+            type: string
+          description: Posição do jogador.
+      responses:
+        200:
+          description: Criação do jogador retornadas com sucesso
+        401:
+          description: Houve falha na criação do jogador
